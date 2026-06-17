@@ -77,6 +77,15 @@ export default defineConfig(({ command }) => ({
         return NODE_POLYFILL_SHIMS[id] ?? null;
       },
     },
+    {
+      name: 'agentation-react-resolver',
+      resolveId(id: string, importer: string | undefined) {
+        if ((id === 'react' || id === 'react-dom/client') && importer?.includes('agentation')) {
+          return require.resolve(id);
+        }
+        return null;
+      },
+    },
     nodePolyfills(),
     VitePWA({
       injectRegister: 'auto', // 'auto' | 'manual' | 'disabled'
@@ -356,6 +365,7 @@ export default defineConfig(({ command }) => ({
       // @clickhouse/click-ui does not export its CSS in the package exports map.
       // Resolve via the CJS entry (always exported), go up two dirs to the package root,
       // then alias the full sub-path so Rolldown skips the exports field check.
+      '@emotion/is-prop-valid': require.resolve('@emotion/is-prop-valid'),
       '@clickhouse/click-ui/dist/esm/click-ui.css': path.join(
         path.resolve(path.dirname(require.resolve('@clickhouse/click-ui')), '../..'),
         'dist/esm/click-ui.css',

@@ -121,6 +121,7 @@
   "homepage": "https://librechat.ai/",
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",
+    "@emotion/is-prop-valid": "^1.4.0",
     "@eslint/compat": "^1.2.6",
     "@eslint/eslintrc": "^3.3.4",
     "@eslint/js": "^9.20.0",
