@@ -18,20 +18,18 @@ const getOrCreateDemoUser = async () => {
   if (demoUser) {
     return demoUser;
   }
-  const mongoose = require('mongoose');
-  const User = mongoose.models.User;
-  let user = await User.findOne({ email: 'demo@librechat.local' }).lean();
+  const { findUser } = require('~/models');
+  let user = await findUser({ email: 'demo@librechat.local' });
   if (!user) {
-    const doc = new User({
+    const { registerUser } = require('~/server/services/AuthService');
+    const result = await registerUser({
       name: 'Demo User',
       username: 'demo',
       email: 'demo@librechat.local',
-      emailVerified: true,
-      role: 'USER',
-      provider: 'local',
+      password: 'DemoUser123!',
+      confirm_password: 'DemoUser123!',
     });
-    await doc.save({ validateBeforeSave: false });
-    user = doc.toObject();
+    user = await findUser({ email: 'demo@librechat.local' });
   }
   demoUser = user;
   return user;
