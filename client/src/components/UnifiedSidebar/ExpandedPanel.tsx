@@ -1,9 +1,10 @@
 import { memo, useCallback, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { useRecoilValue } from 'recoil';
-import { SquarePen } from 'lucide-react';
+import { SquarePen, SidebarClose, SidebarOpen } from 'lucide-react';
 import { QueryKeys } from 'librechat-data-provider';
-import { Skeleton, Sidebar, Button, TooltipAnchor } from '@librechat/client';
+import { Skeleton, Button, TooltipAnchor } from '@librechat/client';
 import type { NavLink } from '~/common';
 import { CLOSE_SIDEBAR_ID } from '~/components/Chat/Menus/OpenSidebar';
 import { useActivePanel, resolveActivePanel, DEFAULT_PANEL } from '~/Providers';
@@ -12,6 +13,24 @@ import { clearMessagesCache, cn } from '~/utils';
 import store from '~/store';
 
 const AccountSettings = lazy(() => import('~/components/Nav/AccountSettings'));
+
+/** ClickHouse logo — 5 bars with currentColor fill, shown on hover of the open button. */
+function ClickHouseLogo({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 54 54"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <rect width="5.9998" height="53.9982" rx="1.45943" fill="currentColor" />
+      <rect x="12" width="5.9998" height="53.9982" rx="1.45943" fill="currentColor" />
+      <rect x="24.001" width="5.9998" height="53.9982" rx="1.45943" fill="currentColor" />
+      <rect x="35.998" width="5.9998" height="53.9982" rx="1.45943" fill="currentColor" />
+      <rect x="48.001" y="21.0005" width="5.9998" height="11.9996" rx="1.45943" fill="currentColor" />
+    </svg>
+  );
+}
 
 const NewChatButton = memo(function NewChatButton({
   setActive,
@@ -39,6 +58,9 @@ const NewChatButton = memo(function NewChatButton({
     [queryClient, conversation?.conversationId, newConversation, switchToHistory, setActive],
   );
 
+  const { pathname } = useLocation();
+  const isActive = pathname === '/c/new';
+
   return (
     <TooltipAnchor
       side="right"
@@ -48,10 +70,16 @@ const NewChatButton = memo(function NewChatButton({
           href="/c/new"
           data-testid="new-chat-button"
           aria-label={localize('com_ui_new_chat')}
-          className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-surface-hover"
+          aria-current={isActive ? 'page' : undefined}
+          className={cn(
+            'flex h-[48px] w-full items-center justify-center rounded-none transition-colors',
+            isActive
+              ? 'bg-surface-active-alt text-text-primary'
+              : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
+          )}
           onClick={handleClick}
         >
-          <SquarePen className="h-5 w-5 text-text-primary" />
+          <SquarePen className="h-5 w-5" aria-hidden="true" />
         </a>
       }
     />
@@ -101,13 +129,14 @@ const NavIconButton = memo(function NavIconButton({
       side="right"
       render={
         <Button
-          size="icon"
           variant="ghost"
           aria-label={localize(link.title)}
           aria-pressed={isActive}
           className={cn(
-            'h-9 w-9 rounded-lg',
-            isActive ? 'bg-surface-active-alt text-text-primary' : 'text-text-secondary',
+            'h-[48px] w-full rounded-none flex items-center justify-center',
+            isActive
+              ? 'bg-surface-active-alt text-text-primary'
+              : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
           )}
           onClick={handleClick}
         >
@@ -137,7 +166,7 @@ function ExpandedPanel({
   const toggleClick = expanded ? onCollapse : onExpand;
 
   return (
-    <div className="flex h-full flex-shrink-0 flex-col gap-2 border-r border-border-light bg-surface-primary-alt px-2 py-2">
+    <div className="flex h-full w-[60px] flex-shrink-0 flex-col items-center gap-1 border-r border-border-light bg-white pb-3 pt-6">
       <TooltipAnchor
         side="right"
         description={localize(toggleLabel)}
@@ -149,31 +178,48 @@ function ExpandedPanel({
             variant="ghost"
             aria-label={localize(toggleLabel)}
             aria-expanded={expanded}
-            className="h-9 w-9 rounded-lg"
+            className="group h-8 w-8 rounded-md pb-1 text-text-secondary hover:text-text-primary"
             onClick={toggleClick}
           >
-            <Sidebar aria-hidden="true" className="h-5 w-5 text-text-primary" />
+            {expanded ? (
+              <SidebarClose aria-hidden="true" className="h-4 w-4" />
+            ) : (
+              <>
+                {/* Default: ClickHouse logo; Hover: expand arrow */}
+                <ClickHouseLogo className="h-5 w-5 text-black group-hover:hidden" />
+                <SidebarOpen aria-hidden="true" className="hidden h-4 w-4 group-hover:block" />
+              </>
+            )}
           </Button>
         }
       />
-      <NewChatButton setActive={setActive} />
-      <div className="mx-2 border-b border-border-light" />
-      <div className="flex flex-col gap-1 overflow-y-auto">
-        {links.map((link) => (
-          <NavIconButton
-            key={link.id}
-            link={link}
-            isActive={link.id === effectiveActive}
-            expanded={expanded ?? true}
-            setActive={setActive}
-            onExpand={onExpand}
-            onCollapse={onCollapse}
-          />
-        ))}
+      {/* New Chat — mirrors top of expanded nav */}
+      <div className="mt-6 w-full">
+        <NewChatButton setActive={setActive} />
+      </div>
+
+      {/* Divider — mirrors the one after CHATS/PROJECTS in expanded nav */}
+      <div className="my-1 w-8 border-b border-border-light" />
+
+      {/* All other nav icons (skip conversations) */}
+      <div className="flex w-full flex-col overflow-y-auto">
+        {links
+          .filter((link) => link.id !== 'conversations')
+          .map((link) => (
+            <NavIconButton
+              key={link.id}
+              link={link}
+              isActive={link.id === effectiveActive}
+              expanded={expanded ?? true}
+              setActive={setActive}
+              onExpand={onExpand}
+              onCollapse={onCollapse}
+            />
+          ))}
       </div>
 
       <div className="mt-auto">
-        <Suspense fallback={<Skeleton className="h-9 w-9 rounded-lg" />}>
+        <Suspense fallback={<Skeleton className="h-8 w-8 rounded-md" />}>
           <AccountSettings collapsed />
         </Suspense>
       </div>
