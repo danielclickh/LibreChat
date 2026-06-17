@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://librechat-poc.onrender.com/api/$1" },
+    { "source": "/oauth/(.*)", "destination": "https://librechat-poc.onrender.com/oauth/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
