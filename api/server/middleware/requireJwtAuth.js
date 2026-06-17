@@ -12,24 +12,26 @@ const {
   maybeRefreshCloudFrontAuthCookiesMiddleware,
 } = require('@librechat/api');
 
-const DEMO_USER_EMAIL = 'demo@librechat.local';
 let demoUser = null;
 
 const getOrCreateDemoUser = async () => {
   if (demoUser) {
     return demoUser;
   }
-  const { findUser, createUser } = require('~/models');
-  let user = await findUser({ email: DEMO_USER_EMAIL });
+  const mongoose = require('mongoose');
+  const User = mongoose.models.User;
+  let user = await User.findOne({ email: 'demo@librechat.local' }).lean();
   if (!user) {
-    user = await createUser({
+    const doc = new User({
       name: 'Demo User',
       username: 'demo',
-      email: DEMO_USER_EMAIL,
+      email: 'demo@librechat.local',
       emailVerified: true,
-      password: Math.random().toString(36),
       role: 'USER',
+      provider: 'local',
     });
+    await doc.save({ validateBeforeSave: false });
+    user = doc.toObject();
   }
   demoUser = user;
   return user;
