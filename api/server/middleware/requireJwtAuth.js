@@ -14,25 +14,13 @@ const {
 
 let demoUser = null;
 
-const getOrCreateDemoUser = async () => {
+const getDemoUser = async () => {
   if (demoUser) {
     return demoUser;
   }
   const { findUser } = require('~/models');
-  let user = await findUser({ email: 'demo@librechat.local' });
-  if (!user) {
-    const { registerUser } = require('~/server/services/AuthService');
-    const result = await registerUser({
-      name: 'Demo User',
-      username: 'demo',
-      email: 'demo@librechat.local',
-      password: 'DemoUser123!',
-      confirm_password: 'DemoUser123!',
-    });
-    user = await findUser({ email: 'demo@librechat.local' });
-  }
-  demoUser = user;
-  return user;
+  demoUser = await findUser({ email: 'demo@librechat.local' });
+  return demoUser;
 };
 
 const hasPassportStrategy = (strategy) =>
@@ -68,12 +56,15 @@ const refreshCloudFrontCookies =
  */
 const requireJwtAuth = (req, res, next) => {
   if (process.env.DEV_BYPASS_AUTH === 'true') {
-    return getOrCreateDemoUser()
+    return getDemoUser()
       .then((user) => {
-        req.user = user;
-        tenantContextMiddleware(req, res, next);
+        if (user) {
+          req.user = user;
+          return tenantContextMiddleware(req, res, next);
+        }
+        return authenticateWithStrategy(0);
       })
-      .catch(next);
+      .catch(() => authenticateWithStrategy(0));
   }
 
   const cookieHeader = req.headers.cookie;

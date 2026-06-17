@@ -153,6 +153,34 @@ const resetPasswordController = async (req, res) => {
 };
 
 const refreshController = async (req, res) => {
+  if (process.env.DEV_BYPASS_AUTH === 'true') {
+    try {
+      const { findUser } = require('~/models');
+      let user = await getUserById(
+        (await findUser({ email: 'demo@librechat.local' }))?._id?.toString(),
+        AUTH_REFRESH_USER_PROJECTION,
+      );
+      if (!user) {
+        const { registerUser } = require('~/server/services/AuthService');
+        await registerUser({
+          name: 'Demo User',
+          username: 'demo',
+          email: 'demo@librechat.local',
+          password: 'DemoUser123!',
+          confirm_password: 'DemoUser123!',
+        });
+        const created = await findUser({ email: 'demo@librechat.local' });
+        user = await getUserById(created?._id?.toString(), AUTH_REFRESH_USER_PROJECTION);
+      }
+      if (user) {
+        const token = await setAuthTokens(user._id.toString(), res, null, req);
+        return res.status(200).send({ token, user: sanitizeUserForAuthResponse(user) });
+      }
+    } catch (err) {
+      logger.error('[refreshController] DEV_BYPASS_AUTH error:', err);
+    }
+  }
+
   const parsedCookies = req.headers.cookie ? cookies.parse(req.headers.cookie) : {};
   const token_provider = parsedCookies.token_provider;
 
