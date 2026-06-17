@@ -12,6 +12,29 @@ const {
   maybeRefreshCloudFrontAuthCookiesMiddleware,
 } = require('@librechat/api');
 
+const DEMO_USER_EMAIL = 'demo@librechat.local';
+let demoUser = null;
+
+const getOrCreateDemoUser = async () => {
+  if (demoUser) {
+    return demoUser;
+  }
+  const { findUser, createUser } = require('~/models');
+  let user = await findUser({ email: DEMO_USER_EMAIL });
+  if (!user) {
+    user = await createUser({
+      name: 'Demo User',
+      username: 'demo',
+      email: DEMO_USER_EMAIL,
+      emailVerified: true,
+      password: Math.random().toString(36),
+      role: 'USER',
+    });
+  }
+  demoUser = user;
+  return user;
+};
+
 const hasPassportStrategy = (strategy) =>
   typeof passport._strategy === 'function' && passport._strategy(strategy) != null;
 
@@ -44,6 +67,15 @@ const refreshCloudFrontCookies =
  * for downstream Mongoose tenant isolation and structured logging.
  */
 const requireJwtAuth = (req, res, next) => {
+  if (process.env.DEV_BYPASS_AUTH === 'true') {
+    return getOrCreateDemoUser()
+      .then((user) => {
+        req.user = user;
+        tenantContextMiddleware(req, res, next);
+      })
+      .catch(next);
+  }
+
   const cookieHeader = req.headers.cookie;
   const parsedCookies = cookieHeader ? cookies.parse(cookieHeader) : {};
   const tokenProvider = parsedCookies.token_provider;
